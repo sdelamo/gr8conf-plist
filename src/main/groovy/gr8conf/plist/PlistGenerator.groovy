@@ -9,11 +9,9 @@ import com.dd.plist.PropertyListParser
 
 class PlistGenerator {
 
-    static final String PLIST_NAME =  'gr8-warsaw.plist'
+    void savePlist(List<Map> trackNames, List<String> roomNames, List<Map> peopleMapList, List<Map> sessionsMapList, String plistName) {
 
-    void savePlist(List<Map> trackNames, List<String> roomNames, List<Map> peopleMapList, List<Map> sessionsMapList) {
 
-        try {
             NSDictionary root = new NSDictionary();
 
             NSDictionary metadata = new NSDictionary()
@@ -36,7 +34,14 @@ class PlistGenerator {
                 sessionDict.put('sessionDescription', map.sessionDescription)
                 sessionDict.put('presenters', map.presenters)
                 sessionDict.put('roomId', map.roomId)
-                sessions.put("${roomNames[map.roomId][0].toLowerCase()}${map.sessionNumber}", sessionDict)
+                //println map.roomId
+                //println roomNames
+                if(map.roomId && roomNames[map.roomId]) {
+                    sessions.put("${roomNames[map.roomId][0].toLowerCase()}${map.sessionNumber}", sessionDict)
+                } else {
+                    println "roomId is null for ${map.title}"
+                }
+
             }
             root.put("sessions", sessions);
 
@@ -69,12 +74,11 @@ class PlistGenerator {
             }
             root.put("tracks", tracks);
 
-            def f = new File(PLIST_NAME)
+            println "saving file ${plistName}"
+            def f = new File(plistName)
             PropertyListParser.saveAsXML(root, f.newOutputStream());
 
-        } catch(Exception ex) {
-            println ex.getMessage()
-        }
+
 
     }
 

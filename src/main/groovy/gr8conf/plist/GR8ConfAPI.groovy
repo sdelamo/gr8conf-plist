@@ -10,10 +10,10 @@ class GR8ConfAPI {
     private static final String API_TALKS_PATH = 'talks'
 
     def jsonSlurper = new JsonSlurper()
-    def tracks
-    def rooms
-    def people
-    def sessions
+    def tracks = []
+    def rooms = []
+    def people = []
+    def sessions = []
 
     def extractPresenters = { speakers, allspeakers ->
         def presenters = []
@@ -29,6 +29,10 @@ class GR8ConfAPI {
     def stripHtml = { html ->
         html = html.replaceAll('<p>','')
         html = html.replaceAll('</p>','')
+        html = html.replaceAll('<li>','')
+        html = html.replaceAll('</li>','')
+        html = html.replaceAll('<ul>','')
+        html = html.replaceAll('</ul>','')
         html
     }
 
@@ -49,8 +53,9 @@ class GR8ConfAPI {
 
             for (def track in agendaObject[i].tracks) {
                 for (def slot in track.slots) {
-                    if (slot.talk.id == talkId) {
-                        return track.room
+                    if (slot?.talk?.id == talkId) {
+                        def roomName = track.room != null && track.room != '' ? track.room : track.name
+                        return roomName
                     }
                 }
             }
@@ -63,7 +68,7 @@ class GR8ConfAPI {
 
             for (def track in agendaObject[i].tracks) {
                 for (def slot in track.slots) {
-                    if (slot.talk.id == talkId) {
+                    if (slot?.talk?.id == talkId) {
                         return track.id
                     }
                 }
@@ -77,8 +82,8 @@ class GR8ConfAPI {
 
             for(def track in agendaObject[i].tracks) {
                 for(def slot in track.slots) {
-                    if(slot.talk.id == talkId) {
-                        return Date.parse('yyyy-MM-dd HH:mm:ss', "${day} ${slot.start}")
+                    if(slot?.talk?.id == talkId) {
+                        return Date.parse('yyyy-MM-dd HH:mm', "${day} ${slot.start}")
                     }
                 }
             }
@@ -112,7 +117,13 @@ class GR8ConfAPI {
     }
 
     def extractRooms(def object) {
-        rooms = object[0].tracks.collect { it.room }
+        for(def obj in object) {
+            for(def track in obj.tracks) {
+                def roomName = track.room != null && track.room.trim() != '' ? track.room : track.name
+                rooms << roomName
+            }
+        }
+        rooms = rooms.unique()
     }
 
     def extractPeople(def eventId) {
@@ -133,24 +144,30 @@ class GR8ConfAPI {
     }
 
     def extractTracks(def object) {
-        tracks = object[0].tracks.collect { [id:it.id, name: it.name] }
+        for(def obj in object) {
+            for(def track in obj.tracks) {
+                tracks << [id:track.id, name: track.name]
+            }
+        }
+        tracks = tracks.unique()
     }
 
     def extractSessions(def agendaObject, def eventId) {
         def text = new URL("${ROOT_API_URL}/${API_VERSION_2}/${API_TALKS_PATH}/${eventId}").text
         def talksObject = jsonSlurper.parseText(text)
         sessions = talksObject.collect {
-            def presenters = extractPresenters(it.speakers,people)
-            [active: true,
-             date: starDateForTalk(agendaObject, it.id),
-             duration: it.duration,
-             trackId: calculateTrackId(tracks, trackIdForTalk(agendaObject,it.id)),
-             column: 1,
-             sessionNumber: it.id,
-             title: it.title,
-             sessionDescription: stripHtml(it.summary),
-             presenters:presenters,
-             roomId: calculateRoomId(rooms,roomForTalk(agendaObject,it.id))]
+            def presenters = extractPresenters(it.speakers, people)
+            [
+                    active            : true,
+                    date              : starDateForTalk(agendaObject, it.id),
+                    duration          : it.slot.duration,
+                    trackId           : calculateTrackId(tracks, trackIdForTalk(agendaObject, it.id)),
+                    column            : 1,
+                    sessionNumber     : it.id,
+                    title             : it.title,
+                    sessionDescription: stripHtml(it.summary),
+                    presenters        : presenters,
+                    roomId            : calculateRoomId(rooms, roomForTalk(agendaObject, it.id))]
         }
     }
 }

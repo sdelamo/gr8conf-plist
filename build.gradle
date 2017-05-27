@@ -6,4 +6,5 @@ repositories {
 
 dependencies {
     compile 'com.googlecode.plist:dd-plist:1.16'
+    compile 'org.codehaus.groovy:groovy-all:2.4.11'
 }
